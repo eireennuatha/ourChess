@@ -11,30 +11,33 @@
 function drawBoard() {
   for (var y = 0; y < 8; y++) {
     for (var x = 0; x < 8; x++) {
-      drawSquare(OURCHESS.context, x, y);
+      drawSquare(GAME.elem.context,
+        {x: x, y: y});
     }
   }
 }
 
-function drawSquare(context, x, y) {
+function drawSquare(context, point) {
+  console.log(point+ '');
+  console.log(point.x);
   context.save();
-  context.fillStyle = OURCHESS.myColor != 'B' ? (x ^ y) & 1 ? OURCHESS.blackColor : OURCHESS.WhiteColor : (x ^ y) & 1 ? OURCHESS.WhiteColor : OURCHESS.blackColor;
-  context.fillRect(x * OURCHESS.PIECE_SIZE, y * OURCHESS.PIECE_SIZE, OURCHESS.PIECE_SIZE, OURCHESS.PIECE_SIZE);
+  context.fillStyle = GAME.player.color != 'B' ? (point.x ^ point.y) & 1 ? GAME.conf.color.black : GAME.conf.color.white : (point.x ^ point.y) & 1 ? GAME.conf.color.white : GAME.conf.color.black;
+  context.fillRect(point.x * GAME.conf.size.piece, point.y * GAME.conf.size.piece, GAME.conf.size.piece, GAME.conf.size.piece);
   context.restore();
 
-  if (x == 0) {
+  if (point.x == 0) {
     context.save();
     context.font = '10px serif';
-    context.fillStyle = OURCHESS.myColor == 'B' ? (x ^ y) & 1 ? OURCHESS.blackColor : OURCHESS.WhiteColor : (x ^ y) & 1 ? OURCHESS.WhiteColor : OURCHESS.blackColor;
-    context.fillText(OURCHESS.myColor == 'B' ? y + 1 : Math.abs(8 - y), (x * OURCHESS.PIECE_SIZE) + 2, (y * OURCHESS.PIECE_SIZE) + 11);
+    context.fillStyle = GAME.player.color == 'B' ? (point.x ^ point.y) & 1 ? GAME.conf.color.black : GAME.conf.color.white : (point.x ^ point.y) & 1 ? GAME.conf.color.white : GAME.conf.color.black;
+    context.fillText(GAME.player.color == 'B' ? point.y + 1 : Math.abs(8 - point.y), (point.x * GAME.conf.size.piece) + 2, (point.y * GAME.conf.size.piece) + 11);
     context.restore();
   }
 
-  if (y == 7) {
+  if (point.y == 7) {
     context.save();
     context.font = '10px serif';
-    context.fillStyle = OURCHESS.myColor == 'B' ? (x ^ y) & 1 ? OURCHESS.blackColor : OURCHESS.WhiteColor : (x ^ y) & 1 ? OURCHESS.WhiteColor : OURCHESS.blackColor;
-    context.fillText(String.fromCharCode(OURCHESS.myColor == 'B' ? 'H'.charCodeAt(0) - x : 'A'.charCodeAt(0) + x), (x * OURCHESS.PIECE_SIZE) + (OURCHESS.PIECE_SIZE - 9), (y * OURCHESS.PIECE_SIZE) + (OURCHESS.PIECE_SIZE - 2));
+    context.fillStyle = GAME.player.color == 'B' ? (point.x ^ point.y) & 1 ? GAME.conf.color.black : GAME.conf.color.white : (point.x ^ point.y) & 1 ? GAME.conf.color.white : GAME.conf.color.black;
+    context.fillText(String.fromCharCode(GAME.player.color == 'B' ? 'H'.charCodeAt(0) - point.x : 'A'.charCodeAt(0) + point.x), (point.x * GAME.conf.size.piece) + (GAME.conf.size.piece - 9), (point.y * GAME.conf.size.piece) + (GAME.conf.size.piece - 2));
     context.restore();
   }
 }
@@ -42,19 +45,21 @@ function drawSquare(context, x, y) {
 function drawPiece() {
   for (var y = 0; y < 8; y++) {
     for (var x = 0; x < 8; x++) {
-      if (OURCHESS.piecePosition[y][x] != '') {
-        drawPieceX(OURCHESS.context, OURCHESS.piecePosition[y][x], x, y);
+      if (GAME.repr.board[y][x] != '') {
+        drawPieceX(GAME.elem.context,
+            GAME.repr.board[y][x],
+            {x: x, y: y});
       }
     }
   }
 }
 
-function drawPieceX(context, piece, x, y) {
+function drawPieceX(context, piece, point) {
   context.save();
   context.shadowOffsetX = 2;
   context.shadowOffsetY = 2;
   context.shadowBlur = 2;
   context.shadowColor = 'rgba(0, 0, 0, 0.5)';
-  context.drawImage(OURCHESS.loadedPiece[piece], x * OURCHESS.PIECE_SIZE, y * OURCHESS.PIECE_SIZE, OURCHESS.PIECE_SIZE, OURCHESS.PIECE_SIZE);
+  context.drawImage(GAME.loadedPiece[piece], point.x * GAME.conf.size.piece, point.y * GAME.conf.size.piece, GAME.conf.size.piece, GAME.conf.size.piece);
   context.restore();
 }

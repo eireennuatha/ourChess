@@ -1,22 +1,22 @@
 ﻿function basicEvent() {
-  socket.emit('join', OURCHESS.room);
+  socket.emit('join', GAME.conf.room);
 
   socket.on('id', function (data) {
-    OURCHESS.myColor = data.yourColor;
-    OURCHESS.myId = data.yourId;
+    GAME.player.color = data.yourColor;
+    GAME.player.id = data.yourId;
 
-    if (OURCHESS.myColor == 'Guest') {
+    if (GAME.player.color == 'Guest') {
       guestEvent();
       setTimeout(function () {
         popup('You are observer.', 'information');
       }, 800);
-      socket.emit('sendMessage', { name: 'Server', message: 'Guest[' + OURCHESS.myId + '] connected. [' + data.length + ' in a room]' });
+      socket.emit('sendMessage', { name: 'Server', message: 'Guest[' + GAME.player.id + '] connected. [' + data.length + ' in a room]' });
     } else {
-      OURCHESS.enemyColor = data.opponentColor;
+      GAME.enemy.color = data.opponentColor;
       opponentEvent();
       dnd();
 
-      if (OURCHESS.myColor == 'W') {
+      if (GAME.player.color == 'W') {
         whiteEvent();
         setTimeout(function () {
           popup('Copy the URL, and Send it to your friends to invite them to this match.', 'information', true);
@@ -33,33 +33,33 @@
   });
 
   socket.on('setPosition', function (data) {
-    OURCHESS.piecePosition = OURCHESS.myColor == 'B' ? rotateBoard(data) : data;
-    OURCHESS.oldPiecePosition = $.extend(true, [], OURCHESS.piecePosition);
+    GAME.repr.board = GAME.player.color == 'B' ? rotateBoard(data) : data;
+    GAME.repr.prev = $.extend(true, [], GAME.repr.board);
 
     setTimeout(function () {
-      OURCHESS.chessBoardDiv.fadeIn(200);
+      GAME.elem.boardDiv.fadeIn(200);
       setRayout();
       draw();
     }, 500);
   });
 
   socket.on('gameStart', function (data) {
-    if (OURCHESS.myColor == 'W') {
-      OURCHESS.movePermission = true;
-      OURCHESS.recordingPosition = [];
-      OURCHESS.recordingPosition.push({ position: OURCHESS.piecePosition.toString(), repetition: 1 });
+    if (GAME.player.color == 'W') {
+      GAME.player.allowMove = true;
+      GAME.repr.recording = [];
+      GAME.repr.recording.push({ position: GAME.repr.board.toString(), repetition: 1 });
       popup('Black player connected. Game Start.', 'information');
     }
 
-    OURCHESS.gameOn = true;
-    OURCHESS.check = false;
-    OURCHESS.castle = true;
-    OURCHESS.queenSideCastle = true;
-    OURCHESS.kingSideCastle = true;
+    GAME.conf.inProcess = true;
+    GAME.player.check = false;
+    GAME.player.castle = true;
+    GAME.player.qCastle = true;
+    GAME.player.kCastle = true;
 
-    OURCHESS.threefoldRepetition = false;
+    GAME.player.threefoldRepetition = false;
 
-    OURCHESS.oldPiecePosition = $.extend(true, [], OURCHESS.piecePosition);
+    GAME.repr.prev = $.extend(true, [], GAME.repr.board);
   });
 
   socket.on('check', function () {
@@ -67,29 +67,29 @@
   });
 
   socket.on('gameEnd', function (data) {
-    var winner = OURCHESS.myColor == 'Guest' || data.winner == 'draw' ? 'information' : OURCHESS.myColor == data.winner ? 'success' : 'fail';
+    var winner = GAME.player.color == 'Guest' || data.winner == 'draw' ? 'information' : GAME.player.color == data.winner ? 'success' : 'fail';
 
-    if (OURCHESS.gameOn == true) {
+    if (GAME.conf.inProcess == true) {
       popup(data.reason + '. ' + data.message, winner);
     } else {
       popup(data.reason + '. ', 'warning');
     }
 
-    OURCHESS.movePermission = false;
-    OURCHESS.gameOn = false;
+    GAME.player.allowMove = false;
+    GAME.conf.inProcess = false;
 
-    OURCHESS.record.text(OURCHESS.record.text() + 'Server : ' + data.reason + '. ' + data.message + '\n');
-    OURCHESS.record.scrollTop(OURCHESS.record[0].scrollHeight);
+    GAME.elem.record.text(GAME.elem.record.text() + 'Server : ' + data.reason + '. ' + data.message + '\n');
+    GAME.elem.record.scrollTop(GAME.elem.record[0].scrollHeight);
   });
 
   socket.on('chatMessage', function (data) {
-    OURCHESS.record.text(OURCHESS.record.text() + data.name + ' : ' + data.message + '\n');
-    OURCHESS.record.scrollTop(OURCHESS.record[0].scrollHeight);
+    GAME.elem.record.text(GAME.elem.record.text() + data.name + ' : ' + data.message + '\n');
+    GAME.elem.record.scrollTop(GAME.elem.record[0].scrollHeight);
   });
 
   socket.on('playSoundGuys', function (data) {
-    OURCHESS.audioElement.setAttribute('src', '/sound/' + data + 'Sound' + (Math.floor(Math.random() * 4) + 1) + '.mp3');
-    OURCHESS.audioElement.play();
+    GAME.elem.audio.setAttribute('src', '/sound/' + data + 'Sound' + (Math.floor(Math.random() * 4) + 1) + '.mp3');
+    GAME.elem.audio.play();
   });
 
   socket.on('error', function (data) {
@@ -103,97 +103,130 @@
 
 function whiteEvent() {
   socket.on('getPosition', function (data) {
-    socket.emit('broadcastPosition', { id: data.id, position: OURCHESS.piecePosition });
+    socket.emit('broadcastPosition', {
+      id: data.id,
+      position: GAME.repr.board});
   });
 }
 
 function opponentEvent() {
   socket.on('turnOff', function (data) {
-    if (data == OURCHESS.myColor) { OURCHESS.movePermission = true; }
+    if (data == GAME.player.color) { GAME.player.allowMove = true; }
   });
 
   socket.on('castle_opponent', function (data) {
-    drawSquare(OURCHESS.context, Math.abs(7 - data.oldRook.x), Math.abs(7 - data.oldRook.y));
-    drawPieceX(OURCHESS.context, data.myColor + 'R', Math.abs(7 - data.newRook.x), Math.abs(7 - data.newRook.y));
-    setPosition(OURCHESS.piecePosition, { x: Math.abs(7 - data.oldRook.x), y: Math.abs(7 - data.oldRook.y) }, { x: Math.abs(7 - data.newRook.x), y: Math.abs(7 - data.newRook.y) }, data.myColor + 'R');
+    drawSquare(GAME.elem.context,
+        mirror(data.oldRook));
+    drawPieceX(GAME.elem.context,
+        data.myColor + 'R',
+        mirror(data.newRook));
+    setPosition(GAME.repr.board,
+        mirror(data.oldRook),
+        mirror(data.newRook),
+        data.myColor + 'R');
   });
 
   socket.on('enPassant_opponent', function (data) {
-    OURCHESS.piecePosition[Math.abs(7 - data.y)][Math.abs(7 - data.x)] = '';
-    drawSquare(OURCHESS.context, Math.abs(7 - data.x), Math.abs(7 - data.y));
+
+    GAME.repr.board[mirror(data).y][mirror(data).x] = '';
+    drawSquare(GAME.elem.context,
+        mirror(data));
   });
 
   socket.on('dragStart_opponent', function (data) {
-    drawSquare(OURCHESS.context, Math.abs(7 - data.drawSquare.x), Math.abs(7 - data.drawSquare.y));
-    drawPieceX(OURCHESS.dragContext, data.piece, 0, 0);
-    $(OURCHESS.theDragCanvas).css('visibility', 'visible');
+
+    drawSquare(GAME.elem.context,
+        mirror(data.drawSquare));
+    drawPieceX(GAME.elem.dragContext,
+        data.piece,
+        {x: 0, y: 0});
+    $(GAME.elem.dragCanvas).css('visibility', 'visible');
   });
 
   socket.on('drag_opponent', function (data) {
-    $(OURCHESS.theDragCanvas).css('top',
+    $(GAME.elem.dragCanvas).css('top',
         0 -
-        (data.top * (OURCHESS.PIECE_SIZE / data.PIECE_SIZE)) -
-        (OURCHESS.PIECE_SIZE / 2) +
-        (OURCHESS.PIECE_SIZE * 8) +
-        ($(OURCHESS.theCanvas).outerWidth() - $(OURCHESS.theCanvas).width()) +
-        Number(OURCHESS.chessBoardDiv.css('paddingLeft').replace('px', ''))
+        (data.top * (GAME.conf.size.piece / data.PIECE_SIZE)) -
+        (GAME.conf.size.piece / 2) +
+        (GAME.conf.size.piece * 8) +
+        ($(GAME.elem.canvas).outerWidth() - $(GAME.elem.canvas).width()) +
+        Number(GAME.elem.boardDiv.css('paddingLeft').replace('px', ''))
       );
-    $(OURCHESS.theDragCanvas).css('left',
+    $(GAME.elem.dragCanvas).css('left',
         0 -
-        (data.left * (OURCHESS.PIECE_SIZE / data.PIECE_SIZE)) -
-        (OURCHESS.PIECE_SIZE / 2) +
-        (OURCHESS.PIECE_SIZE * 8) +
-        ($(OURCHESS.theCanvas).outerWidth() - $(OURCHESS.theCanvas).width()) +
-        Number(OURCHESS.chessBoardDiv.css('paddingLeft').replace('px', ''))
+        (data.left * (GAME.conf.size.piece / data.PIECE_SIZE)) -
+        (GAME.conf.size.piece / 2) +
+        (GAME.conf.size.piece * 8) +
+        ($(GAME.elem.canvas).outerWidth() - $(GAME.elem.canvas).width()) +
+        Number(GAME.elem.boardDiv.css('paddingLeft').replace('px', ''))
       );
   });
 
   socket.on('dragEnd_opponent', function (data) {
+    console.log(data);
     if (data.possible == false) {
-      drawPieceX(OURCHESS.context, data.piece, Math.abs(7 - data.point.x), Math.abs(7 - data.point.y));
+      drawPieceX(GAME.elem.context,
+          data.piece,
+          mirror(data.point));
     } else {
-      OURCHESS.oldPiecePosition = $.extend(true, [], OURCHESS.piecePosition);
+      GAME.repr.prev = $.extend(true, [], GAME.repr.board);
 
-      setPosition(OURCHESS.piecePosition, { x: Math.abs(7 - data.start.x), y: Math.abs(7 - data.start.y) }, { x: Math.abs(7 - data.end.x), y: Math.abs(7 - data.end.y) }, data.piece);
-      drawSquare(OURCHESS.context, Math.abs(7 - data.end.x), Math.abs(7 - data.end.y)); // 캡쳐된 기물 지우기 (todo. 페이드 효과 추가)
-      drawPieceX(OURCHESS.context, data.piece, Math.abs(7 - data.end.x), Math.abs(7 - data.end.y));
+      setPosition(GAME.repr.board,
+          mirror(data.start),
+          mirror(data.end),
+          data.piece);
+      drawSquare(GAME.elem.context,
+          mirror(data.end)); // 캡쳐된 기물 지우기 (todo. 페이드 효과 추가)
+      drawPieceX(GAME.elem.context,
+          data.piece,
+          mirror(data.end));
 
-      if (OURCHESS.myColor == 'W') {
-        var positionString = OURCHESS.piecePosition.toString();
+      if (GAME.player.color == 'W') {
+        var positionString = GAME.repr.board.toString();
 
-        for (var i = 0, max = OURCHESS.recordingPosition.length; i < max; i++) {
-          if (OURCHESS.recordingPosition[i].position == positionString) {
-            OURCHESS.recordingPosition[i].repetition++;
+        for (var i = 0, max = GAME.repr.recording.length; i < max; i++) {
+          if (GAME.repr.recording[i].position == positionString) {
+            GAME.repr.recording[i].repetition++;
             break;
           }
 
           if (i == max - 1) {
-            OURCHESS.recordingPosition.push({ position: positionString, repetition: 1 });
+            GAME.repr.recording.push({
+                position: positionString,
+                repetition: 1});
           }
         }
       }
     }
 
-    $(OURCHESS.theDragCanvas).css('visibility', 'hidden');
+    $(GAME.elem.dragCanvas).css('visibility', 'hidden');
     cleartheDragCanvas();
 
-    var _isCheck = isDengerousOrSafe(OURCHESS.piecePosition, findMyKing(OURCHESS.piecePosition));
+    var _isCheck = isDengerousOrSafe(GAME.repr.board, findMyKing(GAME.repr.board));
     if (_isCheck.bool) {
-      if (isCheckmate(OURCHESS.piecePosition, findMyKing(OURCHESS.piecePosition), _isCheck.attacker).bool) {
-        OURCHESS.movePermission = false;
-        socket.emit('gameEnd', { reason: 'Checkmate', message: OURCHESS.myColor == 'W' ? 'Black Wins!' : 'White Wins!', winner: OURCHESS.enemyColor });
+      if (isCheckmate(GAME.repr.board, findMyKing(GAME.repr.board), _isCheck.attacker).bool) {
+        GAME.player.allowMove  = false;
+        socket.emit('gameEnd', {
+            reason: 'Checkmate',
+            message: GAME.player.color == 'W' ? 'Black Wins!' : 'White Wins!',
+            winner: GAME.enemy.color});
       } else {
-        OURCHESS.check = true;
+        GAME.player.check = true;
         socket.emit('check');
-        socket.emit('sendMessage', { name: 'Server', message: 'Check!' });
+        socket.emit('sendMessage', {
+            name: 'Server',
+            message: 'Check!'});
       }
     } else {
-      var _isDraw = isDraw(OURCHESS.piecePosition);
+      var _isDraw = isDraw(GAME.repr.board);
       if (_isDraw.bool) {
-        OURCHESS.movePermission = false;
-        socket.emit('gameEnd', { reason: _isDraw.reason, message: 'Draw', winner: 'draw' });
+        GAME.player.allowMove = false;
+        socket.emit('gameEnd', {
+          reason: _isDraw.reason,
+          message: 'Draw',
+          winner: 'draw'});
       } else {
-        OURCHESS.check = false;
+        GAME.player.check = false;
       }
     }
   });
@@ -202,66 +235,86 @@ function opponentEvent() {
 function guestEvent() {
   socket.on('castle_guest', function (data) {
     if (data.myColor == 'W') {
-      drawSquare(OURCHESS.context, data.oldRook.x, data.oldRook.y);
-      drawPieceX(OURCHESS.context, data.myColor + 'R', data.newRook.x, data.newRook.y);
-      setPosition(OURCHESS.piecePosition, oldRook, newRook, data.myColor + 'R');
+      drawSquare(GAME.elem.context,
+          data.oldRook);
+      drawPieceX(GAME.elem.context,
+          data.myColor + 'R',
+          data.newRook);
+      setPosition(GAME.repr.board,
+          oldRook,
+          newRook,
+          data.myColor + 'R');
     } else {
-      drawSquare(OURCHESS.context, Math.abs(7 - data.oldRook.x), Math.abs(7 - data.oldRook.y));
-      drawPieceX(OURCHESS.context, data.drawPieceX_piece, Math.abs(7 - data.newRook.x), Math.abs(7 - data.newRook.y));
-      setPosition(OURCHESS.piecePosition, { x: Math.abs(7 - data.oldRook.x), y: Math.abs(7 - data.oldRook.y) }, { x: Math.abs(7 - data.newRook.x), y: Math.abs(7 - data.newRook.y) }, data.myColor + 'R');
+      drawSquare(GAME.elem.context,
+          mirror(data.oldRook));
+      drawPieceX(GAME.elem.context,
+          data.drawPieceX_piece,
+          mirror(data.newRook));
+      setPosition(GAME.repr.board,
+          mirror(data.oldRook),
+          mirror(data.newRook),
+          data.myColor + 'R');
     }
   });
 
   socket.on('enPassant_guest', function (data) {
     if (data.myColor == 'W') {
-      OURCHESS.piecePosition[data.y][data.x] = '';
-      drawSquare(OURCHESS.context, data.x, data.y);
+      GAME.repr.board[data.y][data.x] = '';
+      drawSquare(GAME.elem.context,
+          data);
     } else {
-      OURCHESS.piecePosition[Math.abs(7 - data.y)][Math.abs(7 - data.x)] = '';
-      drawSquare(OURCHESS.context, Math.abs(7 - data.x), Math.abs(7 - data.y));
+      GAME.repr.board[mirror(data).y][mirror(data).x] = '';
+      drawSquare(GAME.elem.context,
+          mirror(data));
     }
   });
 
   socket.on('dragStart_guest', function (data) {
     if (data.myColor == 'W') { // 백의 이동에 대한 게스트 보드의 움직임
-      drawSquare(OURCHESS.context, data.drawSquare.x, data.drawSquare.y);
-      drawPieceX(OURCHESS.dragContext, data.piece, 0, 0);
-      $(OURCHESS.theDragCanvas).css('visibility', 'visible');
-    } else if (data.myColor == 'B') { // 흑의 이동에 대한 게스트 보드의 움직임
-      drawSquare(OURCHESS.context, Math.abs(7 - data.drawSquare.x), Math.abs(7 - data.drawSquare.y));
-      drawPieceX(OURCHESS.dragContext, data.piece, 0, 0);
-      $(OURCHESS.theDragCanvas).css('visibility', 'visible');
+      drawSquare(GAME.elem.context,
+          data.drawSquare);
+      drawPieceX(GAME.dragContext,
+          data.piece,
+          {x: 0, y: 0});
+      $(GAME.elem.dragCanvas).css('visibility', 'visible');
+    } else { // 흑의 이동에 대한 게스트 보드의 움직임
+      drawSquare(GAME.elem.context,
+          mirror(data.drawSquare));
+      drawPieceX(GAME.dragContext,
+          data.piece,
+          {x: 0, y: 0});
+      $(GAME.elem.dragCanvas).css('visibility', 'visible');
     }
   });
 
   socket.on('drag_guest', function (data) {
     if (data.myColor == 'W') { // 백의 이동에 대한 게스트 보드의 움직임
-      $(OURCHESS.theDragCanvas).css('top',
-          (data.top * (OURCHESS.PIECE_SIZE / data.PIECE_SIZE)) -
-          (OURCHESS.PIECE_SIZE / 2) +
-          Number(OURCHESS.chessBoardDiv.css('paddingLeft').replace('px', ''))
+      $(GAME.elem.dragCanvas).css('top',
+          (data.top * (GAME.conf.size.piece / data.PIECE_SIZE)) -
+          (GAME.conf.size.piece / 2) +
+          Number(GAME.elem.boardDiv.css('paddingLeft').replace('px', ''))
         );
-      $(OURCHESS.theDragCanvas).css('left',
-          (data.left * (OURCHESS.PIECE_SIZE / data.PIECE_SIZE)) -
-          (OURCHESS.PIECE_SIZE / 2) +
-          Number(OURCHESS.chessBoardDiv.css('paddingLeft').replace('px', ''))
+      $(GAME.elem.dragCanvas).css('left',
+          (data.left * (GAME.conf.size.piece / data.PIECE_SIZE)) -
+          (GAME.conf.size.piece / 2) +
+          Number(GAME.elem.boardDiv.css('paddingLeft').replace('px', ''))
         );
-    } else if (data.myColor == 'B') { // 흑의 이동에 대한 게스트 보드의 움직임
-      $(OURCHESS.theDragCanvas).css('top',
+    } else  { // 흑의 이동에 대한 게스트 보드의 움직임
+      $(GAME.elem.dragCanvas).css('top',
           0 -
-          (data.top * (OURCHESS.PIECE_SIZE / data.PIECE_SIZE)) -
-          (OURCHESS.PIECE_SIZE / 2) +
-          (OURCHESS.PIECE_SIZE * 8) +
-          ($(OURCHESS.theCanvas).outerWidth() - $(OURCHESS.theCanvas).width()) +
-          Number(OURCHESS.chessBoardDiv.css('paddingLeft').replace('px', ''))
+          (data.top * (GAME.conf.size.piece / data.PIECE_SIZE)) -
+          (GAME.conf.size.piece / 2) +
+          (GAME.conf.size.piece * 8) +
+          ($(GAME.elem.canvas).outerWidth() - $(GAME.elem.canvas).width()) +
+          Number(GAME.elem.boardDiv.css('paddingLeft').replace('px', ''))
         );
-      $(OURCHESS.theDragCanvas).css('left',
+      $(GAME.elem.dragCanvas).css('left',
           0 -
-          (data.left * (OURCHESS.PIECE_SIZE / data.PIECE_SIZE)) -
-          (OURCHESS.PIECE_SIZE / 2) +
-          (OURCHESS.PIECE_SIZE * 8) +
-          ($(OURCHESS.theCanvas).outerWidth() - $(OURCHESS.theCanvas).width()) +
-          Number(OURCHESS.chessBoardDiv.css('paddingLeft').replace('px', ''))
+          (data.left * (GAME.conf.size.piece / data.PIECE_SIZE)) -
+          (GAME.conf.size.piece / 2) +
+          (GAME.conf.size.piece * 8) +
+          ($(GAME.elem.canvas).outerWidth() - $(GAME.elem.canvas).width()) +
+          Number(GAME.elem.boardDiv.css('paddingLeft').replace('px', ''))
         );
     }
   });
@@ -269,27 +322,43 @@ function guestEvent() {
   socket.on('dragEnd_guest', function (data) {
     if (data.myColor == 'W') { // 백의 이동에 대한 게스트 보드의 움직임
       if (data.possible == false) {
-        drawPieceX(OURCHESS.context, data.piece, data.point.x, data.point.y);
+        drawPieceX(GAME.elem.context,
+            data.piece,
+            data.point);
       } else {
-        setPosition(OURCHESS.piecePosition, data.start, data.end, data.piece);
-        drawSquare(OURCHESS.context, data.end.x, data.end.y); // 캡쳐된 기물 지우기 (todo. 페이드 효과 추가)
-        drawPieceX(OURCHESS.context, data.piece, data.end.x, data.end.y);
+        setPosition(GAME.repr.board,
+            data.start,
+            data.end,
+            data.piece);
+        drawSquare(GAME.elem.context,
+            data.end); // 캡쳐된 기물 지우기 (todo. 페이드 효과 추가)
+        drawPieceX(GAME.elem.context,
+            data.piece,
+            data.end);
       }
-    } else if (data.myColor == 'B') { // 흑의 이동에 대한 게스트 보드의 움직임
+    } else { // 흑의 이동에 대한 게스트 보드의 움직임
       if (data.possible == false) {
-        drawPieceX(OURCHESS.context, data.piece, Math.abs(7 - data.point.x), Math.abs(7 - data.point.y));
+        drawPieceX(GAME.elem.context,
+            data.piece,
+            mirror(data.point));
       } else {
-        setPosition(OURCHESS.piecePosition, { x: Math.abs(7 - data.start.x), y: Math.abs(7 - data.start.y) }, { x: Math.abs(7 - data.end.x), y: Math.abs(7 - data.end.y) }, data.piece);
-        drawSquare(OURCHESS.context, Math.abs(7 - data.end.x), Math.abs(7 - data.end.y)); // 캡쳐된 기물 지우기 (todo. 페이드 효과 추가)
-        drawPieceX(OURCHESS.context, data.piece, Math.abs(7 - data.end.x), Math.abs(7 - data.end.y));
+        setPosition(GAME.repr.board,
+            mirror(data.start),
+            mirror(data.end),
+            data.piece);
+        drawSquare(GAME.elem.context,
+            mirror(data.end)); // 캡쳐된 기물 지우기 (todo. 페이드 효과 추가)
+        drawPieceX(GAME.elem.context,
+            data.piece,
+            mirror(data.end));
       }
     }
 
-    $(OURCHESS.theDragCanvas).css('visibility', 'hidden');
+    $(GAME.elem.dragCanvas).css('visibility', 'hidden');
     cleartheDragCanvas();
 
-    $(OURCHESS.theDragCanvas).css('marginLeft', '0px');
-    $(OURCHESS.theDragCanvas).css('marginTop', '0px');
+    $(GAME.elem.dragCanvas).css('marginLeft', '0px');
+    $(GAME.elem.dragCanvas).css('marginTop', '0px');
   });
 }
 
@@ -305,7 +374,7 @@ function rotateBoard(board) {
 function findMyKing(position) {
   for (var y = 0; y < 8; y++) {
     for (var x = 0; x < 8 ; x++) {
-      if (position[y][x] == (OURCHESS.myColor + 'K')) {
+      if (position[y][x] == (GAME.player.color + 'K')) {
         return { x: x, y: y };
       }
     }

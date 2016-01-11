@@ -1,7 +1,62 @@
 function init(room, loadedPiece) {
   this.socket = io.connect();
 
-  window.OURCHESS = {
+  window.GAME = {
+      elem: {
+        canvas: document.getElementById('canvas'),
+        context: document.getElementById('canvas').getContext('2d'),
+
+        dragCanvas: document.getElementById('dragCanvas'),
+        dragContext: document.getElementById('dragCanvas').getContext('2d'),
+
+        record: $('#record'),
+        textInput: $('#textInput'),
+
+        boardDiv: $('#chessBoard'),
+        audio: document.createElement('audio'),
+        bgPopup: $("#bgPopup"),
+        Popup: $("#Popup"),
+        contents: $('#contents') },
+
+      conf: {
+
+        color: {
+            black: '#b58863',
+            white: '#f0d9b5'},
+
+        size: {
+            piece: null,
+            board: null},
+
+        inProcess: false,
+
+        room: room},
+
+      player: {
+        id: null,
+        color: null,
+        allowMove: false,
+        orientation: null,
+
+        threefoldRepetition: false,
+
+        check: false,
+        castle: true,
+        qCastle: true,
+        kCastle: true},
+
+      enemy: {color: null},
+
+      repr: {
+        board: null,
+        prev: null,
+        recording: []},
+
+      pieceFocused: null,
+      loadedPiece: loadedPiece
+  }
+
+/*
     room: room,
 
     theCanvas: document.getElementById('canvas'),
@@ -32,7 +87,7 @@ function init(room, loadedPiece) {
     piecePosition: null,
     dragObj: null,
 
-    loadedPiece: loadedPiece,
+
 
     recordingPosition: [],
     threefoldRepetition: false,
@@ -42,30 +97,32 @@ function init(room, loadedPiece) {
     queenSideCastle: true,
     kingSideCastle: true,
 
-    audioElement: document.createElement('audio'),
-    bgPopup: $("#bgPopup"),
-    Popup: $("#Popup"),
-    contents: $('#contents')
-  }
+audioElement: document.createElement('audio'),
+bgPopup: $("#bgPopup"),
+Popup: $("#Popup"),
+contents: $('#contents')*/
 
-  document.body.appendChild(OURCHESS.audioElement);
+
+  document.body.appendChild(GAME.elem.audio);
 
   dragDisable();
   basicEvent();
 
-  OURCHESS.bgPopup.data("state", 0);
+  GAME.elem.bgPopup.data("state", 0);
 
-  OURCHESS.Popup.css('max-width', '50%');
-  OURCHESS.Popup.css('paddingRight', OURCHESS.Popup.css('paddingLeft'));
+  GAME.elem.Popup.css('max-width', '50%');
+  GAME.elem.Popup.css('paddingRight', GAME.elem.Popup.css('paddingLeft'));
 
-  OURCHESS.Popup.on('click', function () { disablePopup(); });
-  OURCHESS.bgPopup.on('click', function () { disablePopup(); });
-  OURCHESS.Popup.on('touchstart', function () { disablePopup(); });
+  GAME.elem.Popup.on('click', function () { disablePopup(); });
+  GAME.elem.bgPopup.on('click', function () { disablePopup(); });
+  GAME.elem.Popup.on('touchstart', function () { disablePopup(); });
 
-  OURCHESS.textInput.keyup(function (e) { // 엔터 입력시 메시지 전송
-    if (e.keyCode == 13 && OURCHESS.textInput.val() != '') {
-      socket.emit('sendMessage', { name: OURCHESS.myColor == 'W' ? 'White' : OURCHESS.myColor == 'B' ? 'Black' : 'Guest[' + OURCHESS.myId + ']', message: OURCHESS.textInput.val() });
-      OURCHESS.textInput.val('');
+  GAME.elem.textInput.keyup(function (e) { // 엔터 입력시 메시지 전송
+    if (e.keyCode == 13 && GAME.elem.textInput.val() != '') {
+      socket.emit('sendMessage',
+          { name: GAME.player.color == 'W' ? 'White' : GAME.player.color == 'B' ? 'Black' : 'Guest[' + GAME.player.id + ']',
+           message: GAME.elem.textInput.val() });
+      GAME.elem.textInput.val('');
     }
   });
 
@@ -77,10 +134,10 @@ function init(room, loadedPiece) {
 
 function setRayout() {
   var isLandscape = $(window).width() > $(window).height();
-  var sidebarWidth = OURCHESS.orientation == 'portrait' ? (OURCHESS.BOARD_SIZE / 2.5) + 22 : OURCHESS.textInput.outerWidth();
+  var sidebarWidth = GAME.player.orientation == 'portrait' ? ( GAME.conf.size.board / 2.5) + 22 : GAME.elem.textInput.outerWidth();
   var canvasWidth = $('#canvas').outerWidth();
-  var canvas_sidebarMargin = Number(OURCHESS.textInput.css('marginLeft').replace('px', ''));
-  var padding = Number(OURCHESS.chessBoardDiv.css('paddingLeft').replace('px', '')) * 2;
+  var canvas_sidebarMargin = Number(GAME.elem.textInput.css('marginLeft').replace('px', ''));
+  var padding = Number(GAME.elem.boardDiv.css('paddingLeft').replace('px', '')) * 2;
 
   var isLandscapePossible = isLandscape && canvasWidth + sidebarWidth + canvas_sidebarMargin + padding < $(window).width();
 
@@ -88,59 +145,63 @@ function setRayout() {
     var realHeight = $(window).height() - padding - 8;
     // 8은 canvas border width * 2
 
-    OURCHESS.PIECE_SIZE = realHeight / 8 < 60 ? realHeight / 8 : 60;
-    OURCHESS.BOARD_SIZE = OURCHESS.PIECE_SIZE * 8;
+    GAME.conf.size.piece = realHeight / 8 < 60 ? realHeight / 8 : 60;
+    GAME.conf.size.board = GAME.conf.size.piece * 8;
 
-    OURCHESS.record.css('margin', '0px 0px 4px 4px');
-    OURCHESS.record.css('float', 'right');
-    OURCHESS.textInput.css('margin', '0px 0px 0px 4px');
-    OURCHESS.textInput.css('float', 'right');
+    GAME.elem.record.css('margin', '0px 0px 4px 4px');
+    GAME.elem.record.css('float', 'right');
+    GAME.elem.textInput.css('margin', '0px 0px 0px 4px');
+    GAME.elem.textInput.css('float', 'right');
 
-    OURCHESS.record.css('width', OURCHESS.BOARD_SIZE / 2.5);
-    OURCHESS.textInput.css('width', OURCHESS.BOARD_SIZE / 2.5);
+    GAME.elem.record.css('width', GAME.conf.size.board/ 2.5);
+    GAME.elem.textInput.css('width', GAME.conf.size.board / 2.5);
     // 임의의 사이드바 width
 
-    OURCHESS.record.css('height', OURCHESS.BOARD_SIZE - OURCHESS.textInput.outerHeight() - 4 - 10);
+    GAME.elem.record.css('height', GAME.conf.size.board - GAME.elem.textInput.outerHeight() - 4 - 10);
     // margin bottom 4px + (padding 5px * 2). border width를 계산 안한 건 canvas border width가 BOARD_SIZE 사이즈에 더해지지 않아서
 
-    OURCHESS.chessBoardDiv.css('width', 'auto');
+    GAME.elem.boardDiv.css('width', 'auto');
 
-    OURCHESS.orientation = 'landscape';
+    GAME.player.orientation = 'landscape';
   } else { // 세로모드
     var realWidth = $(window).width() - padding - 8;
 
-    OURCHESS.PIECE_SIZE = realWidth / 8 < 60 ? realWidth / 8 : 60;
-    OURCHESS.BOARD_SIZE = OURCHESS.PIECE_SIZE * 8;
+    GAME.conf.size.piece = realWidth / 8 < 60 ? realWidth / 8 : 60;
+    GAME.conf.size.board = GAME.conf.size.piece * 8;
 
-    OURCHESS.record.css('margin', '4px 0px 4px 0px');
-    OURCHESS.record.css('float', 'left');
-    OURCHESS.textInput.css('margin', '0');
-    OURCHESS.textInput.css('float', 'left');
+    GAME.elem.record.css('margin', '4px 0px 4px 0px');
+    GAME.elem.record.css('float', 'left');
+    GAME.elem.textInput.css('margin', '0');
+    GAME.elem.textInput.css('float', 'left');
 
-    OURCHESS.record.css('width', OURCHESS.BOARD_SIZE - 10);
-    OURCHESS.textInput.css('width', OURCHESS.BOARD_SIZE - 10);
+    GAME.elem.record.css('width',
+        GAME.conf.size.board - 10);
+    GAME.elem.textInput.css('width',
+        GAME.conf.size.board - 10);
     // 10은 pading * 2
 
-    OURCHESS.record.css('height', OURCHESS.BOARD_SIZE / 3.5);
+    GAME.elem.record.css('height',
+        GAME.conf.size.board / 3.5);
     // 임의의 height
 
-    OURCHESS.chessBoardDiv.css('width', OURCHESS.BOARD_SIZE + 8);
+    GAME.elem.boardDiv.css('width',
+        GAME.conf.size.board + 8);
     // width가 auto일 시 자동으로 조정되지 않아서 수동으로 사이즈 조절
 
-    OURCHESS.orientation = 'portrait';
+    GAME.player.orientation = 'portrait';
   }
 
-  OURCHESS.theCanvas.width = OURCHESS.BOARD_SIZE; // 캔버스 고유 API인 모양, jQuery의 css 메소드로 설정하면 캔버스가 깨짐
-  OURCHESS.theCanvas.height = OURCHESS.BOARD_SIZE;
-  OURCHESS.theDragCanvas.width = OURCHESS.PIECE_SIZE;
-  OURCHESS.theDragCanvas.height = OURCHESS.PIECE_SIZE;
+  GAME.elem.canvas.width = GAME.conf.size.board; // 캔버스 고유 API인 모양, jQuery의 css 메소드로 설정하면 캔버스가 깨짐
+  GAME.elem.canvas.height = GAME.conf.size.board;
+  GAME.elem.dragCanvas.width = GAME.conf.size.piece;
+  GAME.elem.dragCanvas.height = GAME.conf.size.piece;
 
-  OURCHESS.bgPopup.css("width", $(window).width());
-  OURCHESS.bgPopup.css("height", $(window).height());
-  OURCHESS.record.scrollTop(OURCHESS.record[0].scrollHeight);
+  GAME.elem.bgPopup.css("width", $(window).width());
+  GAME.elem.bgPopup.css("height", $(window).height());
+  GAME.elem.record.scrollTop(GAME.elem.record[0].scrollHeight);
 
-  OURCHESS.chessBoardDiv.center();
-  OURCHESS.Popup.center();
+  GAME.elem.boardDiv.center();
+  GAME.elem.Popup.center();
 }
 
 jQuery.fn.center = function () {
@@ -151,32 +212,37 @@ jQuery.fn.center = function () {
 
 function dragDisable() {
   var t_preventDefault = function (evt) { evt.preventDefault(); };
-  $(document).bind('dragstart', t_preventDefault).bind('selectstart', t_preventDefault);
+  $(document).bind('dragstart', t_preventDefault)
+    .bind('selectstart', t_preventDefault);
 }
 
 function cleartheCanvas() {
-  OURCHESS.context.save();
+  GAME.elem.context.save();
 
-  OURCHESS.context.setTransform(1, 0, 0, 1, 0, 0);
-  OURCHESS.context.clearRect(0, 0, OURCHESS.theCanvas.width, OURCHESS.theCanvas.height);
+  GAME.elem.context.setTransform(1, 0, 0, 1, 0, 0);
+  GAME.elem.context.clearRect(0, 0,
+      GAME.elem.canvas.width,
+      GAME.elem.canvas.height);
 
-  OURCHESS.context.restore();
+  GAME.elem.context.restore();
 }
 
 function cleartheDragCanvas() {
-  OURCHESS.dragContext.save();
+  GAME.elem.dragContext.save();
 
-  OURCHESS.dragContext.setTransform(1, 0, 0, 1, 0, 0);
-  OURCHESS.dragContext.clearRect(0, 0, OURCHESS.theDragCanvas.width, OURCHESS.theDragCanvas.height);
+  GAME.elem.dragContext.setTransform(1, 0, 0, 1, 0, 0);
+  GAME.elem.dragContext.clearRect(0, 0,
+      GAME.elem.dragCanvas.width,
+      GAME.elem.dragCanvas.height);
 
-  OURCHESS.dragContext.restore();
+  GAME.elem.dragContext.restore();
 }
 
 function onResize() {
   setRayout();
   draw(true);
-  OURCHESS.chessBoardDiv.center();
-  OURCHESS.Popup.center();
+  GAME.elem.boardDiv.center();
+  GAME.elem.Popup.center();
   $('#progress').center();
 }
 

@@ -8,27 +8,30 @@ function mouseDownEvent(e) {
   var aboutEvent = isDragPossible(event);
   if (aboutEvent === false) { return; }
 
-  OURCHESS.dragObj = aboutEvent;
+  GAME.pieceFocused = aboutEvent;
 
   socket.emit('dragStart', {
-    myColor: OURCHESS.myColor,
-    drawSquare: OURCHESS.dragObj.point,
-    piece: OURCHESS.dragObj.piece
+    myColor: GAME.player.color,
+    drawSquare: GAME.pieceFocused.point,
+    piece: GAME.pieceFocused.piece
   });
 
   socket.emit('drag', { // 체스판을 왼쪽 상단 모서리를 기준으로 한 좌표 전송   
-    myColor: OURCHESS.myColor,
-    PIECE_SIZE: OURCHESS.PIECE_SIZE,
-    top: event.clientY - $(OURCHESS.theCanvas).offset().top,
-    left: event.clientX - $(OURCHESS.theCanvas).offset().left
+    myColor: GAME.player.color,
+    PIECE_SIZE: GAME.conf.size.piece,
+    top: event.clientY - $(GAME.elem.canvas).offset().top,
+    left: event.clientX - $(GAME.elem.canvas).offset().left
   });
 
-  $(OURCHESS.theDragCanvas).css('visibility', 'visible');
+  $(GAME.elem.dragCanvas).css('visibility', 'visible');
 
   setPointXY(event); // 드래그 캔버스의 위치를 현재 마우스 커서로 지정    
 
-  drawSquare(OURCHESS.context, OURCHESS.dragObj.point.x, OURCHESS.dragObj.point.y); // 캔버스에 드래그를 시작한 위치의 기물의 모습을 가림
-  drawPieceX(OURCHESS.dragContext, OURCHESS.dragObj.piece, 0, 0); // 드래그 캔버스에 기물의 이미지를 그림
+  drawSquare(GAME.elem.context,
+      GAME.pieceFocused.point); // 캔버스에 드래그를 시작한 위치의 기물의 모습을 가림
+  drawPieceX(GAME.elem.dragContext,
+      GAME.pieceFocused.piece,
+      {x: 0, y: 0}); // 드래그 캔버스에 기물의 이미지를 그림
 
   e.preventDefault();
 
@@ -45,10 +48,10 @@ function mouseMoveEvent(e) {
   setPointXY(event);
 
   socket.emit('drag', { // 체스판을 왼쪽 상단 모서리를 기준으로 한 좌표 전송
-    myColor: OURCHESS.myColor,
-    PIECE_SIZE: OURCHESS.PIECE_SIZE,
-    top: event.clientY - $(OURCHESS.theCanvas).offset().top,
-    left: event.clientX - $(OURCHESS.theCanvas).offset().left
+    myColor: GAME.player.color,
+    PIECE_SIZE: GAME.conf.size.piece,
+    top: event.clientY - $(GAME.elem.canvas).offset().top,
+    left: event.clientX - $(GAME.elem.canvas).offset().left
   });
 
   e.preventDefault();
@@ -59,40 +62,51 @@ function mouseUpEvent(e) {
   var aboutEvent = isDropPossible(event);
 
   if (aboutEvent === false) { // 이동이 불가할 경우
-    drawPieceX(OURCHESS.context, OURCHESS.dragObj.piece, OURCHESS.dragObj.point.x, OURCHESS.dragObj.point.y);
+    drawPieceX(GAME.elem.context,
+        GAME.pieceFocused.piece,
+        GAME.pieceFocused.point);
 
     socket.emit('dragEnd', {
-      myColor: OURCHESS.myColor,
+      myColor: GAME.player.color,
       possible: false,
-      piece: OURCHESS.dragObj.piece,
-      point: OURCHESS.dragObj.point
+      piece: GAME.pieceFocused.piece,
+      point: GAME.pieceFocused.point
     });
   } else { // 이동이 가능할 경우
     var nowPoint = aboutEvent;
     
-    OURCHESS.oldPiecePosition = $.extend(true, [], OURCHESS.piecePosition);
+    GAME.repr.prev = $.extend(true, [], GAME.repr.board);
 
-    setPosition(OURCHESS.piecePosition, OURCHESS.dragObj.point, nowPoint, OURCHESS.dragObj.piece);
-    drawSquare(OURCHESS.context, nowPoint.x, nowPoint.y); // 캡쳐된 기물 지우기 (todo. 페이드 효과 추가)
-    drawPieceX(OURCHESS.context, OURCHESS.dragObj.piece, nowPoint.x, nowPoint.y);
+    setPosition(GAME.repr.board,
+        GAME.pieceFocused.point,
+        nowPoint,
+        GAME.pieceFocused.piece);
+    drawSquare(GAME.elem.context,
+        nowPoint); // 캡쳐된 기물 지우기 (todo. 페이드 효과 추가)
+    drawPieceX(GAME.elem.context,
+        GAME.pieceFocused.piece,
+        nowPoint);
 
     socket.emit('dragEnd', {
-      myColor: OURCHESS.myColor,
+      myColor: GAME.player.color,
       possible: true,
-      start: OURCHESS.dragObj.point,
+      start: GAME.pieceFocused.point,
       end: nowPoint,
-      piece: OURCHESS.dragObj.piece,
+      piece: GAME.pieceFocused.piece,
     });
 
+    console.log('reached it');
+    console.log(nowPoint);
     // 턴 종료
-    socket.emit('endOfTurn', OURCHESS.myColor);
+    socket.emit('endOfTurn', GAME.player.color);
     socket.emit('playSound', 'move');
-    OURCHESS.movePermission = false;
+    GAME.player.allowMove = false;
+    console.log(GAME.player.allowMove);
   }
 
-  $(OURCHESS.theDragCanvas).css('visibility', 'hidden');
-  OURCHESS.theDragCanvas.width = OURCHESS.theDragCanvas.width;
-  OURCHESS.theDragCanvas.height = OURCHESS.theDragCanvas.height;
+  $(GAME.elem.dragCanvas).css('visibility', 'hidden');
+  GAME.elem.dragCanvas.width = GAME.elem.dragCanvas.width;
+  GAME.elem.dragCanvas.height = GAME.elem.dragCanvas.height;
 
   e.preventDefault();
 

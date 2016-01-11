@@ -1,10 +1,10 @@
 ﻿function loadPopup(callback) {
   //loads popup only if it is disabled  
-  if (OURCHESS.bgPopup.data("state") == 0) {
-    OURCHESS.bgPopup.css({ "opacity": "0.7" });
-    OURCHESS.bgPopup.fadeIn("medium");
-    OURCHESS.Popup.fadeIn("medium");
-    OURCHESS.bgPopup.data("state", 1);
+  if (GAME.elem.bgPopup.data("state") == 0) {
+    GAME.elem.bgPopup.css({ "opacity": "0.7" });
+    GAME.elem.bgPopup.fadeIn("medium");
+    GAME.elem.Popup.fadeIn("medium");
+    GAME.elem.bgPopup.data("state", 1);
 
     if (typeof callback != 'undefined') {
       callback();
@@ -13,33 +13,33 @@
 }
 
 function disablePopup() {
-  if (OURCHESS.bgPopup.data("state") == 1) {
-    OURCHESS.bgPopup.fadeOut("medium");
-    OURCHESS.Popup.fadeOut("medium");
-    OURCHESS.bgPopup.data("state", 0);
+  if (GAME.elem.bgPopup.data("state") == 1) {
+    GAME.elem.bgPopup.fadeOut("medium");
+    GAME.elem.Popup.fadeOut("medium");
+    GAME.elem.bgPopup.data("state", 0);
   }
 }
 
 function popup(message, type, doNotAutoClose) {
-  OURCHESS.Popup.removeClass();
+  GAME.elem.Popup.removeClass();
 
   switch (type) {
     case 'warning':
-      OURCHESS.Popup.addClass("alert alert-block");
+      GAME.elem.Popup.addClass("alert alert-block");
       break;
     case 'fail':
-      OURCHESS.Popup.addClass("alert alert-error");
+      GAME.elem.Popup.addClass("alert alert-error");
       break;
     case 'success':
-      OURCHESS.Popup.addClass("alert alert-success");
+      GAME.elem.Popup.addClass("alert alert-success");
       break;
     case 'information':
-      OURCHESS.Popup.addClass("alert alert-info");
+      GAME.elem.Popup.addClass("alert alert-info");
       break;
   }
 
-  OURCHESS.contents.text(message);
-  OURCHESS.Popup.center();
+  GAME.elem.contents.text(message);
+  GAME.elem.Popup.center();
   loadPopup();
 
   if (!doNotAutoClose) {

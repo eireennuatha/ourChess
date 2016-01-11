@@ -6,11 +6,11 @@
     return false;
   }
 
-  if (OURCHESS.movePermission == false) {
+  if (GAME.player.allowMove == false) {
     return false;
   }
 
-  if (startPiece.piece.charAt(0) != OURCHESS.myColor) {
+  if (startPiece.piece.charAt(0) != GAME.player.color) {
     return false;
   }
 
@@ -29,16 +29,16 @@ function isDropPossible(event) {
     return false;
   }
 
-  if (OURCHESS.dragObj.piece.charAt(0) == endPiece.piece.charAt(0)) {
+  if (GAME.pieceFocused.piece.charAt(0) == endPiece.piece.charAt(0)) {
     return false;
   }
 
-  if (!isRightRule(OURCHESS.dragObj.piece.charAt(1), endPoint)) {
+  if (!isRightRule(GAME.pieceFocused.piece.charAt(1), endPoint)) {
     return false;
   }
 
-  var previewPosition = $.extend(true, [], OURCHESS.piecePosition);
-  setPosition(previewPosition, OURCHESS.dragObj.point, endPoint, OURCHESS.dragObj.piece);
+  var previewPosition = $.extend(true, [], GAME.repr.board);
+  setPosition(previewPosition, GAME.pieceFocused.point, endPoint, GAME.pieceFocused.piece);
 
   if (isDengerousOrSafe(previewPosition, findMyKing(previewPosition)).bool) {
     return false;
@@ -58,7 +58,7 @@ function isInBoard(p) {
 function isRightRule(piece, endPoint) {
   var result = true;
   var pointArgs = {
-    start: OURCHESS.dragObj.point,
+    start: GAME.pieceFocused.point,
     end: endPoint
   }
 
@@ -69,17 +69,17 @@ function isRightRule(piece, endPoint) {
     case 'R':
       result = rookRule(pointArgs);
       if (result == true) {
-        if (OURCHESS.dragObj.point.y == 7 && OURCHESS.dragObj.point.x == 0) {
-          if (OURCHESS.myColor == 'W') {
-            OURCHESS.queenSideCastle = false;
+        if (GAME.pieceFocused.point.y == 7 && GAME.pieceFocused.point.x == 0) {
+          if (GAME.player.color == 'W') {
+            GAME.player.qCastle = false;
           } else {
-            OURCHESS.kingSideCastle = false;
+            GAME.player.kCastle = false;
           }
-        } else if (OURCHESS.dragObj.point.y == 7 && OURCHESS.dragObj.point.x == 7) {
-          if (OURCHESS.myColor == 'W') {
-            OURCHESS.kingSideCastle = false;
+        } else if (GAME.pieceFocused.point.y == 7 && GAME.pieceFocused.point.x == 7) {
+          if (GAME.player.color == 'W') {
+            GAME.player.kCastle = false;
           } else {
-            OURCHESS.queenSideCastle = false;
+            GAME.player.qCastle = false;
           }
         }
       }
@@ -96,9 +96,9 @@ function isRightRule(piece, endPoint) {
     case 'K':
       result = kingRule(pointArgs);
       if (result == true) { // 한번이라도 움직일 시 캐슬 불가
-        OURCHESS.kingSideCastle = false;
-        OURCHESS.queenSideCastle = false;
-        OURCHESS.castle = false;
+        GAME.player.kCastle = false;
+        GAME.player.qCastle = false;
+        GAME.player.castle = false;
       }
       break;
   }
@@ -123,7 +123,7 @@ function pawnRule(p) {
     } else if (p.start.y - p.end.y == 1) { // 1칸 이동
       if (getPosition(p.end).isEmpty) {
         if (p.end.y == 0) { // 프로모션
-          OURCHESS.dragObj.piece = OURCHESS.myColor + 'Q';
+          GAME.pieceFocused.piece = GAME.player.color + 'Q';
         }
         return true;
       }
@@ -133,14 +133,16 @@ function pawnRule(p) {
   } else if (Math.abs(p.start.x - p.end.x) == 1 && p.start.y - p.end.y == 1) { // 대각선 1칸 캡처
     if (!getPosition(p.end).isEmpty) {
       if (p.end.y == 0) { // 프로모션
-        OURCHESS.dragObj.piece = OURCHESS.myColor + 'Q';
+        GAME.pieceFocused.piece = GAME.player.color + 'Q';
       }
       return true;
     } else { // 대각선 1칸 이동이지만 해당 위치가 빈 블록일 때
-      if (isEnPassant(OURCHESS.piecePosition, OURCHESS.oldPiecePosition, p.start, p.end, (OURCHESS.myColor == 'W' ? 'B' : 'W') + 'P')) { // 앙파상일 때
-        OURCHESS.piecePosition[p.start.y][p.end.x] = '';
-        drawSquare(OURCHESS.context, p.end.x, p.start.y);
-        socket.emit('enPassant', { x: p.end.x, y: p.start.y, myColor: OURCHESS.myColor });
+      if (isEnPassant(GAME.repr.board, GAME.repr.prev, p.start, p.end, (GAME.player.color == 'W' ? 'B' : 'W') + 'P')) { // 앙파상일 때
+        GAME.repr.board[p.start.y][p.end.x] = '';
+        drawSquare(GAME.elem.context, {
+            x: p.end.x,
+            y: p.start.y});
+        socket.emit('enPassant', { x: p.end.x, y: p.start.y, myColor: GAME.player.color });
         return true;
       } else {
         return false;
@@ -180,7 +182,7 @@ function queenRule(p) {
 function kingRule(p) {
   if (Math.abs(p.start.x - p.end.x) <= 1 && Math.abs(p.start.y - p.end.y) <= 1) {
     return true;
-  } else if (p.start.y == p.end.y && Math.abs(p.start.x - p.end.x) == 2 && OURCHESS.castle && !OURCHESS.check) { // 캐슬
+  } else if (p.start.y == p.end.y && Math.abs(p.start.x - p.end.x) == 2 && GAME.player.castle && !GAME.player.check) { // 캐슬
     return castleCheck(p.start, p.end);
   } else {
     return false;
@@ -250,17 +252,17 @@ function horizontalCheck(start, end) {
     }
   }
 
-  if (OURCHESS.myColor == 'W') {
+  if (GAME.player.color == 'W') {
     if (start.x == 0 && start.y == 7) { // 퀸사이드 캐슬 불가능
-      OURCHESS.queenSideCastle = false;
+      GAME.player.qCastle = false;
     } else if (start.x == 7 && start.y == 7) { // 킹사이드 캐슬 불가능
-      OURCHESS.kingSideCastle = false;
+      GAME,player.kCastle = false;
     }
   } else {
     if (start.x == 0 && start.y == 7) { // 킹사이드 캐슬 불가능
-      OURCHESS.kingSideCastle = false;
+      GAME.player.kCastle = false;
     } else if (start.x == 7 && start.y == 7) { // 퀸사이드 캐슬 불가능
-      OURCHESS.queenSideCastle = false;
+      GAME.player.qCastle = false;
     }
   }
 
@@ -282,17 +284,17 @@ function verticalCheck(start, end) {
     }
   }
 
-  if (OURCHESS.myColor == 'W') {
+  if (GAME.player.color == 'W') {
     if (start.x == 0 && start.y == 7) { // 퀸사이드 캐슬 불가능
-      OURCHESS.queenSideCastle = false;
+      GAME.player.qCastle = false;
     } else if (start.x == 7 && start.y == 7) { // 킹사이드 캐슬 불가능
-      OURCHESS.kingSideCastle = false;
+      GAME.player.kCastle = false;
     }
   } else {
     if (start.x == 0 && start.y == 7) { // 킹사이드 캐슬 불가능
-      OURCHESS.kingSideCastle = false;
+      GAME.player.kCastle = false;
     } else if (start.x == 7 && start.y == 7) { // 퀸사이드 캐슬 불가능
-      OURCHESS.queenSideCastle = false;
+      GAME.player.qCastle = false;
     }
   }
 
@@ -300,63 +302,75 @@ function verticalCheck(start, end) {
 }
 
 function castleCheck(start, end) {
-  if (((start.x == 4 && end.x == 2 && OURCHESS.myColor == 'W') || (start.x == 3 && end.x == 5 && OURCHESS.myColor == 'B')) && OURCHESS.queenSideCastle) { // 퀸사이드
-    for (var i = OURCHESS.myColor == 'W' ? 1 : 6; OURCHESS.myColor == 'W' ? i < start.x : i > start.x; OURCHESS.myColor == 'W' ? i++ : i--) {
+  if (((start.x == 4 && end.x == 2 && GAME.player.color == 'W') || (start.x == 3 && end.x == 5 && GAME.player.color == 'B')) && GAME.player.qCastle) { // 퀸사이드
+    for (var i = GAME.player.color == 'W' ? 1 : 6; GAME.player.color == 'W' ? i < start.x : i > start.x; GAME.player.color == 'W' ? i++ : i--) {
       if (!getPosition({ x: i, y: start.y }).isEmpty) {
         return false;
       }
     }
 
-    for (var i = OURCHESS.myColor == 'W' ? 2 : 5; OURCHESS.myColor == 'W' ? i < start.x : i > start.x; OURCHESS.myColor == 'W' ? i++ : i--) {
-      var previewPosition = $.extend(true, [], OURCHESS.piecePosition);
-      setPosition(previewPosition, OURCHESS.dragObj.point, { x: i, y: start.y }, OURCHESS.dragObj.piece);
+    for (var i = GAME.player.color == 'W' ? 2 : 5; GAME.player.color == 'W' ? i < start.x : i > start.x; GAME.player.color == 'W' ? i++ : i--) {
+      var previewPosition = $.extend(true, [], GAME.repr.board);
+      setPosition(previewPosition, GAME.pieceFocused.point, { x: i, y: start.y }, GAME.pieceFocused.piece);
 
       if (isDengerousOrSafe(previewPosition, findMyKing(previewPosition)).bool) {
         return false;
       }
     }
 
-    OURCHESS.queenSideCastle = false;
+    GAME.player.qCastle = false;
 
-    var oldRook = { x: OURCHESS.myColor == 'W' ? 0 : 7, y: 7 };
-    var newRook = { x: OURCHESS.myColor == 'W' ? 3 : 4, y: 7 };
+    var oldRook = { x: GAME.player.color == 'W' ? 0 : 7, y: 7 };
+    var newRook = { x: GAME.player.color == 'W' ? 3 : 4, y: 7 };
 
-    drawSquare(OURCHESS.context, oldRook.x, oldRook.y);
-    drawPieceX(OURCHESS.context, OURCHESS.myColor + 'R', newRook.x, newRook.y);
-    setPosition(OURCHESS.piecePosition, oldRook, newRook, OURCHESS.myColor + 'R');
+    drawSquare(GAME.elem.context,
+        oldRook);
+    drawPieceX(GAME.elem.context,
+        GAME.player.color + 'R',
+        newRook);
+    setPosition(GAME.repr.board,
+        oldRook,
+        newRook,
+        GAME.player.color + 'R');
 
     socket.emit('castle', {
-      myColor: OURCHESS.myColor,
-      oldRook: oldRook,
-      newRook: newRook
+        myColor: GAME.player.color,
+        oldRook: oldRook,
+        newRook: newRook
     });
-  } else if (((start.x == 4 && end.x == 6 && OURCHESS.myColor == 'W') || (start.x == 3 && end.x == 1 && OURCHESS.myColor == 'B')) && OURCHESS.kingSideCastle) { // 킹사이드
-    for (var i = OURCHESS.myColor == 'B' ? 1 : 6; OURCHESS.myColor == 'B' ? i < start.x : i > start.x; OURCHESS.myColor == 'B' ? i++ : i--) {
+  } else if (((start.x == 4 && end.x == 6 && GAME.player.color == 'W') || (start.x == 3 && end.x == 1 && GAME.player.color == 'B')) && GAME.player.kCastle) { // 킹사이드
+    for (var i = GAME.player.color == 'B' ? 1 : 6; GAME.player.color == 'B' ? i < start.x : i > start.x; GAME.player.color == 'B' ? i++ : i--) {
       if (!getPosition({ x: i, y: start.y }).isEmpty) {
         return false;
       }
 
-      var previewPosition = $.extend(true, [], OURCHESS.piecePosition);
-      setPosition(previewPosition, OURCHESS.dragObj.point, { x: i, y: start.y }, OURCHESS.dragObj.piece);
+      var previewPosition = $.extend(true, [], GAME.repr.board);
+      setPosition(previewPosition, GAME.pieceFocused.point, { x: i, y: start.y }, GAME.pieceFocused.piece);
 
       if (isDengerousOrSafe(previewPosition, findMyKing(previewPosition)).bool) {
         return false;
       }
     }
 
-    OURCHESS.kingSideCastle = false;
+    GAME.player.kCastle = false;
 
-    var oldRook = { x: OURCHESS.myColor == 'W' ? 7 : 0, y: 7 };
-    var newRook = { x: OURCHESS.myColor == 'W' ? 5 : 2, y: 7 };
+    var oldRook = { x: GAME.player.color == 'W' ? 7 : 0, y: 7 };
+    var newRook = { x: GAME.player.color == 'W' ? 5 : 2, y: 7 };
 
-    drawSquare(OURCHESS.context, oldRook.x, oldRook.y);
-    drawPieceX(OURCHESS.context, OURCHESS.myColor + 'R', newRook.x, newRook.y);
-    setPosition(OURCHESS.piecePosition, oldRook, newRook, OURCHESS.myColor + 'R');
+    drawSquare(GAME.elem.context,
+        oldRook);
+    drawPieceX(GAME.elem.context,
+        GAME.player.color + 'R',
+        newRook);
+    setPosition(GAME.repr.board,
+        oldRook,
+        newRook,
+        GAME.player.color + 'R');
 
     socket.emit('castle', {
-      myColor: OURCHESS.myColor,
-      oldRook: oldRook,
-      newRook: newRook
+        myColor: GAME.player.color,
+        oldRook: oldRook,
+        newRook: newRook
     });
   }
   return true;
@@ -373,11 +387,11 @@ function isDengerousOrSafe(position, target, checkSafe, notThis) {
   function isAlreadyCheck(x, y) { for (var i = 0, max = notThis.length; i < max; i++) { if (notThis[i].x == x && notThis[i].y == y) return true; } return false; }
 
   if (checkSafe === true) {
-    var enemyColor = OURCHESS.myColor;
-    var myColor = OURCHESS.enemyColor;
+    var enemyColor = GAME.player.color;
+    var myColor = GAME.enemy.color;
   } else {
-    var enemyColor = OURCHESS.enemyColor;
-    var myColor = OURCHESS.myColor;
+    var enemyColor = GAME.enemy.color;
+    var myColor = GAME.player.color;
   }
 
   // 폰의 공격에 대한 검사
@@ -534,7 +548,7 @@ function isCheckmate(position, king, attacker) {
   // 킹이 도망갈 곳이 있는지 검사
   function isAbleToMoveTheKing(x, y) {
     try {
-      if (position[y][x].charAt(0) != OURCHESS.myColor) {
+      if (position[y][x].charAt(0) != GAME.player.color) {
         var previewPosition = $.extend(true, [], position);
         setPosition(previewPosition, king, { x: x, y: y }, position[y][x]);
 
@@ -670,8 +684,8 @@ function isDraw(position) {
 }
 
 function isThreefoldRepetition() {
-  for (var i = 0, max = OURCHESS.recordingPosition.length; i < max; i++) {
-    if (OURCHESS.recordingPosition[i].repetition >= 3) {
+  for (var i = 0, max = GAME.repr.recording.length; i < max; i++) {
+    if (GAME.repr.recording[i].repetition >= 3) {
       return true;
     }
   }
@@ -713,7 +727,7 @@ function isKingAndBishopVsKingOrKingAndKnightpVsKing(position, piece) {
 function isStalemate(position) {
   function isAbleToMoveSomeone(_x, _y) {
     try {
-      if (position[_y][_x].charAt(0) != OURCHESS.myColor) {
+      if (position[_y][_x].charAt(0) != GAME.player.color) {
         var previewPosition = $.extend(true, [], position);
         setPosition(previewPosition, { x: x, y: y }, { x: _x, y: _y }, position[y][x]);
         if (!isDengerousOrSafe(previewPosition, findMyKing(previewPosition)).bool) { return false; }
@@ -731,19 +745,19 @@ function isStalemate(position) {
     } catch (e) { }
 
     try {
-      if (position[y - 1][x - 1].charAt(0) == OURCHESS.enemyColor && isAbleToMoveSomeone(x - 1, y - 1) === false) { return false; }
+      if (position[y - 1][x - 1].charAt(0) == GAME.enemy.color && isAbleToMoveSomeone(x - 1, y - 1) === false) { return false; }
     } catch (e) { }
 
     try {
-      if (position[y - 1][x + 1].charAt(0) == OURCHESS.enemyColor && isAbleToMoveSomeone(x + 1, y - 1) === false) { return false; }
+      if (position[y - 1][x + 1].charAt(0) == GAME.enemy.color && isAbleToMoveSomeone(x + 1, y - 1) === false) { return false; }
     } catch (e) { }
 
     try {
-      if (isEnPassant(position, OURCHESS.oldPiecePosition, piece, { x: x - 1, y: y - 1 }, enemyColor + 'P') && isAbleToMoveSomeone(x - 1, y - 1) === false) { return false; }
+      if (isEnPassant(position, GAME.repr.prev, piece, { x: x - 1, y: y - 1 }, enemyColor + 'P') && isAbleToMoveSomeone(x - 1, y - 1) === false) { return false; }
     } catch (e) { }
 
     try {
-      if (isEnPassant(position, OURCHESS.oldPiecePosition, piece, { x: x + 1, y: y - 1 }, enemyColor + 'P') && isAbleToMoveSomeone(x + 1, y - 1) === false) { return false; }
+      if (isEnPassant(position, GAME.repr.prev, piece, { x: x + 1, y: y - 1 }, enemyColor + 'P') && isAbleToMoveSomeone(x + 1, y - 1) === false) { return false; }
     } catch (e) { }
   }
 
@@ -834,7 +848,7 @@ function isStalemate(position) {
 
   for (var y = 0; y < 8; y++) {
     for (var x = 0; x < 8; x++) {
-      if (position[y][x].charAt(0) == OURCHESS.myColor) {
+      if (position[y][x].charAt(0) == GAME.player.color) {
         switch (position[y][x].charAt(1)) {
           case 'P':
             if (aboutPawn(x, y) === false) return false;

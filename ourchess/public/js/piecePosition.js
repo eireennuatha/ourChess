@@ -9,9 +9,9 @@ function getPosition(point) {
   }
 
   return {
-    piece: OURCHESS.piecePosition[point.y][point.x],
+    piece: GAME.repr.board[point.y][point.x],
     point: { x: point.x, y: point.y },
-    isEmpty: OURCHESS.piecePosition[point.y][point.x] == '' ? true : false
+    isEmpty: GAME.repr.board[point.y][point.x] == '' ? true : false
   }
 }
 
@@ -20,29 +20,37 @@ function getPointXY(event) {
 
   return {
     x: Math.floor((
-        e.pageX - $(OURCHESS.theCanvas).offset().left -
-        Number($(OURCHESS.theCanvas).css('border-width').replace('px', ''))) /
-        OURCHESS.PIECE_SIZE
+        e.pageX - $(GAME.elem.canvas).offset().left -
+        Number($(GAME.elem.canvas).css('border-width').replace('px', ''))) /
+        GAME.conf.size.piece
       ),
 
     y: Math.floor((
-        e.pageY - $(OURCHESS.theCanvas).offset().top -
-        Number($(OURCHESS.theCanvas).css('border-width').replace('px', ''))) /
-        OURCHESS.PIECE_SIZE
+        e.pageY - $(GAME.elem.canvas).offset().top -
+        Number($(GAME.elem.canvas).css('border-width').replace('px', ''))) /
+        GAME.conf.size.piece
       )
   };
 }
 
 function setPointXY(event) {
-  $(OURCHESS.theDragCanvas).css('left',
-     event.clientX - (OURCHESS.PIECE_SIZE / 2) -
-     $(OURCHESS.theCanvas).offset().left +
-     Number(OURCHESS.chessBoardDiv.css('paddingLeft').replace('px', ''))
+  $(GAME.elem.dragCanvas).css('left',
+     event.clientX - (GAME.conf.size.piece / 2) -
+     $(GAME.elem.canvas).offset().left +
+     Number(GAME.elem.boardDiv.css('paddingLeft').replace('px', ''))
    );
-  $(OURCHESS.theDragCanvas).css('top',
+  $(GAME.elem.dragCanvas).css('top',
     event.clientY -
-     (OURCHESS.PIECE_SIZE / 2) -
-     $(OURCHESS.theCanvas).offset().top +
-     Number(OURCHESS.chessBoardDiv.css('paddingLeft').replace('px', ''))
+     (GAME.conf.size.piece / 2) -
+     $(GAME.elem.canvas).offset().top +
+     Number(GAME.elem.boardDiv.css('paddingLeft').replace('px', ''))
    );
+}
+
+function mirror(point) {
+  var mirrored = {
+    x: Math.abs(7 - point.x),
+    y: Math.abs(7 - point.y)
+  };
+  return mirrored; 
 }
