@@ -1,4 +1,12 @@
-﻿function setPosition(position, start, end, piece) {
+﻿function applySwap(board, startPoint, endPoint, startPiece, endPiece) {
+  board[startPoint.y][startPoint.x] = endPiece;
+  board[endPoint.y][endPoint.x] = startPiece;
+
+  console.log('here\'s your board');
+  console.log(board);
+}
+
+function setPosition(position, start, end, piece) {
   position[start.y][start.x] = '';
   position[end.y][end.x] = piece;
 }

@@ -21,8 +21,8 @@ function init(room, loadedPiece) {
       conf: {
 
         color: {
-            black: '#b58863',
-            white: '#f0d9b5'},
+            black: '#000000',
+            white: '#FFFFFF'},
 
         size: {
             piece: null,
@@ -36,8 +36,12 @@ function init(room, loadedPiece) {
         id: null,
         color: null,
         allowMove: false,
-        orientation: null,
+        allowSwap: false,
 
+        swapped: false,
+        moveRestriction: null,
+
+        orientation: null,
         threefoldRepetition: false,
 
         check: false,
@@ -56,51 +60,6 @@ function init(room, loadedPiece) {
       loadedPiece: loadedPiece
   }
 
-/*
-    room: room,
-
-    theCanvas: document.getElementById('canvas'),
-    context: document.getElementById('canvas').getContext('2d'),
-
-    theDragCanvas: document.getElementById('dragCanvas'),
-    dragContext: document.getElementById('dragCanvas').getContext('2d'),
-
-    chessBoardDiv: $('#chessBoard'),
-    record: $('#record'),
-    textInput: $('#textInput'),
-
-    blackColor: '#b58863',
-    WhiteColor: '#f0d9b5',
-
-    gameOn: false,
-
-    myId: null,
-    myColor: null,
-    enemyColor: null,
-    movePermission: false,
-
-    PIECE_SIZE: null,
-    BOARD_SIZE: null,
-    orientation: null,
-
-    oldPiecePosition: null,
-    piecePosition: null,
-    dragObj: null,
-
-
-
-    recordingPosition: [],
-    threefoldRepetition: false,
-
-    check: false,
-    castle: true,
-    queenSideCastle: true,
-    kingSideCastle: true,
-
-audioElement: document.createElement('audio'),
-bgPopup: $("#bgPopup"),
-Popup: $("#Popup"),
-contents: $('#contents')*/
 
 
   document.body.appendChild(GAME.elem.audio);

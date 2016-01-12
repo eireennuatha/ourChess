@@ -18,8 +18,6 @@ function drawBoard() {
 }
 
 function drawSquare(context, point) {
-  console.log(point+ '');
-  console.log(point.x);
   context.save();
   context.fillStyle = GAME.player.color != 'B' ? (point.x ^ point.y) & 1 ? GAME.conf.color.black : GAME.conf.color.white : (point.x ^ point.y) & 1 ? GAME.conf.color.white : GAME.conf.color.black;
   context.fillRect(point.x * GAME.conf.size.piece, point.y * GAME.conf.size.piece, GAME.conf.size.piece, GAME.conf.size.piece);

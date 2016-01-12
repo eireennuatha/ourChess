@@ -14,6 +14,20 @@
     return false;
   }
 
+  console.log(GAME);
+
+  if (GAME.player.swapped == true) {
+
+
+    // I am really sorry, future-me, this was supposed to be temporary
+
+    if ( GAME.player.moveRestriction[0].x == startPiece.point.x && GAME.player.moveRestriction[0].y == startPiece.point.y) {
+      return startPiece;
+    } else if (GAME.player.moveRestriction[1].x == startPiece.point.x && GAME.player.moveRestriction[1].y == startPiece.point.y) { // Check if the piece to be dragged is one of the 2 swapped pieces in case swap has already been applied
+      return startPiece;
+    } else { return false };
+  }
+
   if (startPiece.piece == '') {
     return false;
   }
@@ -25,26 +39,54 @@ function isDropPossible(event) {
   var endPoint = getPointXY(event);
   var endPiece = getPosition(endPoint);
 
-  if (!isInBoard(endPoint)) {
+  if (!isInBoard(endPoint)) { // Check whether the piece has been dropped within the borders of the board
     return false;
   }
 
-  if (GAME.pieceFocused.piece.charAt(0) == endPiece.piece.charAt(0)) {
-    return false;
+  if (GAME.pieceFocused.piece.charAt(0) == endPiece.piece.charAt(0)) { // Check whether the two pieces are of the same colour
+    console.log(endPiece);
+    console.log('preswap');
+    return isSwapPossible(endPiece);
   }
 
-  if (!isRightRule(GAME.pieceFocused.piece.charAt(1), endPoint)) {
+  if (!isRightRule(GAME.pieceFocused.piece.charAt(1), endPoint)) { // Check whether the piece has been moved according to the rules
     return false;
   }
 
   var previewPosition = $.extend(true, [], GAME.repr.board);
   setPosition(previewPosition, GAME.pieceFocused.point, endPoint, GAME.pieceFocused.piece);
 
-  if (isDengerousOrSafe(previewPosition, findMyKing(previewPosition)).bool) {
+  if (isDengerousOrSafe(previewPosition, findMyKing(previewPosition)).bool) { // Check whether the moves results in a dangerous situation (check, checkmate)
     return false;
   }
 
   return endPoint;
+}
+
+function isSwapPossible(endPiece) {
+  if (GAME.pieceFocused == endPiece) {
+    return false;
+  } else if (GAME.player.allowSwap == false) {
+    return false;
+  } else if (GAME.pieceFocused.piece.charAt(1) == 'K') {
+    return false;
+  } else if (endPiece.piece.charAt(1) == 'K') {
+    return false;
+  }
+
+  GAME.player.allowSwap = false;
+  restrictToSwapped(GAME.pieceFocused,
+      endPiece,
+      GAME.pieceFocused.point,
+      endPiece.point);
+
+  console.log('here');
+
+  return {
+    swap: true,
+    endPiece: endPiece
+  };
+
 }
 
 function isInBoard(p) {
@@ -53,6 +95,12 @@ function isInBoard(p) {
   } else {
     return false;
   }
+}
+
+function restrictToSwapped(startPoint, endPoint) {
+
+
+  GAME.player.moveRestriction = [startPoint, endPoint];
 }
 
 function isRightRule(piece, endPoint) {

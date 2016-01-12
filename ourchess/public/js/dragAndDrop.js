@@ -9,6 +9,8 @@ function mouseDownEvent(e) {
   if (aboutEvent === false) { return; }
 
   GAME.pieceFocused = aboutEvent;
+  console.log(GAME.pieceFocused);
+  console.log('!!!!!');
 
   socket.emit('dragStart', {
     myColor: GAME.player.color,
@@ -16,7 +18,7 @@ function mouseDownEvent(e) {
     piece: GAME.pieceFocused.piece
   });
 
-  socket.emit('drag', { // Ã¼½ºÆÇÀ» ¿ŞÂÊ »ó´Ü ¸ğ¼­¸®¸¦ ±âÁØÀ¸·Î ÇÑ ÁÂÇ¥ Àü¼Û   
+  socket.emit('drag', { // ÃƒÂ¼Â½ÂºÃ†Ã‡Ã€Â» Â¿ÃÃ‚ÃŠ Â»Ã³Â´Ãœ Â¸Ã°Â¼Â­Â¸Â®Â¸Â¦ Â±Ã¢ÃÃ˜Ã€Â¸Â·Ã Ã‡Ã‘ ÃÃ‚Ã‡Â¥ Ã€Ã¼Â¼Ã›   
     myColor: GAME.player.color,
     PIECE_SIZE: GAME.conf.size.piece,
     top: event.clientY - $(GAME.elem.canvas).offset().top,
@@ -25,13 +27,13 @@ function mouseDownEvent(e) {
 
   $(GAME.elem.dragCanvas).css('visibility', 'visible');
 
-  setPointXY(event); // µå·¡±× Äµ¹ö½ºÀÇ À§Ä¡¸¦ ÇöÀç ¸¶¿ì½º Ä¿¼­·Î ÁöÁ¤    
+  setPointXY(event); // ÂµÃ¥Â·Â¡Â±Ã— Ã„ÂµÂ¹Ã¶Â½ÂºÃ€Ã‡ Ã€Â§Ã„Â¡Â¸Â¦ Ã‡Ã¶Ã€Ã§ Â¸Â¶Â¿Ã¬Â½Âº Ã„Â¿Â¼Â­Â·Ã ÃÃ¶ÃÂ¤    
 
   drawSquare(GAME.elem.context,
-      GAME.pieceFocused.point); // Äµ¹ö½º¿¡ µå·¡±×¸¦ ½ÃÀÛÇÑ À§Ä¡ÀÇ ±â¹°ÀÇ ¸ğ½ÀÀ» °¡¸²
+      GAME.pieceFocused.point); // Ã„ÂµÂ¹Ã¶Â½ÂºÂ¿Â¡ ÂµÃ¥Â·Â¡Â±Ã—Â¸Â¦ Â½ÃƒÃ€Ã›Ã‡Ã‘ Ã€Â§Ã„Â¡Ã€Ã‡ Â±Ã¢Â¹Â°Ã€Ã‡ Â¸Ã°Â½Ã€Ã€Â» Â°Â¡Â¸Â²
   drawPieceX(GAME.elem.dragContext,
       GAME.pieceFocused.piece,
-      {x: 0, y: 0}); // µå·¡±× Äµ¹ö½º¿¡ ±â¹°ÀÇ ÀÌ¹ÌÁö¸¦ ±×¸²
+      {x: 0, y: 0}); // ÂµÃ¥Â·Â¡Â±Ã— Ã„ÂµÂ¹Ã¶Â½ÂºÂ¿Â¡ Â±Ã¢Â¹Â°Ã€Ã‡ Ã€ÃŒÂ¹ÃŒÃÃ¶Â¸Â¦ Â±Ã—Â¸Â²
 
   e.preventDefault();
 
@@ -47,7 +49,7 @@ function mouseMoveEvent(e) {
   var event = bindEvent(e);
   setPointXY(event);
 
-  socket.emit('drag', { // Ã¼½ºÆÇÀ» ¿ŞÂÊ »ó´Ü ¸ğ¼­¸®¸¦ ±âÁØÀ¸·Î ÇÑ ÁÂÇ¥ Àü¼Û
+  socket.emit('drag', { // ÃƒÂ¼Â½ÂºÃ†Ã‡Ã€Â» Â¿ÃÃ‚ÃŠ Â»Ã³Â´Ãœ Â¸Ã°Â¼Â­Â¸Â®Â¸Â¦ Â±Ã¢ÃÃ˜Ã€Â¸Â·Ã Ã‡Ã‘ ÃÃ‚Ã‡Â¥ Ã€Ã¼Â¼Ã›
     myColor: GAME.player.color,
     PIECE_SIZE: GAME.conf.size.piece,
     top: event.clientY - $(GAME.elem.canvas).offset().top,
@@ -61,7 +63,8 @@ function mouseUpEvent(e) {
   var event = bindEvent(e);
   var aboutEvent = isDropPossible(event);
 
-  if (aboutEvent === false) { // ÀÌµ¿ÀÌ ºÒ°¡ÇÒ °æ¿ì
+
+  if (aboutEvent === false) { // Ã€ÃŒÂµÂ¿Ã€ÃŒ ÂºÃ’Â°Â¡Ã‡Ã’ Â°Ã¦Â¿Ã¬
     drawPieceX(GAME.elem.context,
         GAME.pieceFocused.piece,
         GAME.pieceFocused.point);
@@ -72,7 +75,52 @@ function mouseUpEvent(e) {
       piece: GAME.pieceFocused.piece,
       point: GAME.pieceFocused.point
     });
-  } else { // ÀÌµ¿ÀÌ °¡´ÉÇÒ °æ¿ì
+  } else if (aboutEvent.swap === true) {
+    var endPiece = aboutEvent.endPiece;
+
+    GAME.player.swapped = true;
+
+    console.log('Reached drop=swap');
+
+
+    GAME.repr.prev = $.extend(true, [], GAME.repr.board);
+
+    applySwap(GAME.repr.board,
+        GAME.pieceFocused.point,
+        endPiece.point,
+        GAME.pieceFocused.piece,
+        endPiece.piece);
+
+    restrictToSwapped(GAME.pieceFocused.point,
+        endPiece.point);
+
+    console.log('reached applySwap');
+
+    drawSquare(GAME.elem.context,
+        endPiece.point);
+    
+    drawSquare(GAME.elem.context,
+        GAME.pieceFocused.point);
+
+    drawPieceX(GAME.elem.context,
+        GAME.pieceFocused.piece,
+        endPiece.point);
+
+    drawPieceX(GAME.elem.context,
+        endPiece.piece,
+        GAME.pieceFocused.point);
+
+    socket.emit('dragEnd', {
+      swap: true,
+      myColor: GAME.player.color,
+      possible: true,
+      start: GAME.pieceFocused.point,
+      end: endPiece.point,
+      startPiece: GAME.pieceFocused.piece,
+      endPiece: endPiece.piece
+    });
+
+  } else { // Ã€ÃŒÂµÂ¿Ã€ÃŒ Â°Â¡Â´Ã‰Ã‡Ã’ Â°Ã¦Â¿Ã¬
     var nowPoint = aboutEvent;
     
     GAME.repr.prev = $.extend(true, [], GAME.repr.board);
@@ -82,7 +130,7 @@ function mouseUpEvent(e) {
         nowPoint,
         GAME.pieceFocused.piece);
     drawSquare(GAME.elem.context,
-        nowPoint); // Ä¸ÃÄµÈ ±â¹° Áö¿ì±â (todo. ÆäÀÌµå È¿°ú Ãß°¡)
+        nowPoint); // Ã„Â¸ÃƒÃ„ÂµÃˆ Â±Ã¢Â¹Â° ÃÃ¶Â¿Ã¬Â±Ã¢ (todo. Ã†Ã¤Ã€ÃŒÂµÃ¥ ÃˆÂ¿Â°Ãº ÃƒÃŸÂ°Â¡)
     drawPieceX(GAME.elem.context,
         GAME.pieceFocused.piece,
         nowPoint);
@@ -95,13 +143,12 @@ function mouseUpEvent(e) {
       piece: GAME.pieceFocused.piece,
     });
 
-    console.log('reached it');
-    console.log(nowPoint);
-    // ÅÏ Á¾·á
+
+    // Ã…Ã ÃÂ¾Â·Ã¡
     socket.emit('endOfTurn', GAME.player.color);
     socket.emit('playSound', 'move');
     GAME.player.allowMove = false;
-    console.log(GAME.player.allowMove);
+
   }
 
   $(GAME.elem.dragCanvas).css('visibility', 'hidden');

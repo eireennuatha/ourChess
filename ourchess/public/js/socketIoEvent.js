@@ -46,6 +46,7 @@
   socket.on('gameStart', function (data) {
     if (GAME.player.color == 'W') {
       GAME.player.allowMove = true;
+      GAME.player.allowSwap = true;
       GAME.repr.recording = [];
       GAME.repr.recording.push({ position: GAME.repr.board.toString(), repetition: 1 });
       popup('Black player connected. Game Start.', 'information');
@@ -111,7 +112,11 @@ function whiteEvent() {
 
 function opponentEvent() {
   socket.on('turnOff', function (data) {
-    if (data == GAME.player.color) { GAME.player.allowMove = true; }
+    if (data == GAME.player.color) {
+      GAME.player.allowMove = true;
+      GAME.player.allowSwap = true;
+      GAME.player.swapped = false;
+    }
   });
 
   socket.on('castle_opponent', function (data) {
@@ -163,7 +168,6 @@ function opponentEvent() {
   });
 
   socket.on('dragEnd_opponent', function (data) {
-    console.log(data);
     if (data.possible == false) {
       drawPieceX(GAME.elem.context,
           data.piece,
@@ -171,15 +175,41 @@ function opponentEvent() {
     } else {
       GAME.repr.prev = $.extend(true, [], GAME.repr.board);
 
-      setPosition(GAME.repr.board,
-          mirror(data.start),
-          mirror(data.end),
-          data.piece);
-      drawSquare(GAME.elem.context,
-          mirror(data.end)); // 캡쳐된 기물 지우기 (todo. 페이드 효과 추가)
-      drawPieceX(GAME.elem.context,
-          data.piece,
-          mirror(data.end));
+      console.log(data);
+
+      if (data.swap == true) {
+
+        applySwap(GAME.repr.board,
+            mirror(data.start),
+            mirror(data.end),
+            data.startPiece,
+            data.endPiece);
+
+        drawSquare(GAME.elem.context,
+            mirror(data.end));
+    
+        drawSquare(GAME.elem.context,
+            mirror(data.start));
+
+        drawPieceX(GAME.elem.context,
+            data.startPiece,
+            mirror(data.end));
+
+        drawPieceX(GAME.elem.context,
+            data.endPiece,
+            mirror(data.start));
+      } else {
+
+        setPosition(GAME.repr.board,
+            mirror(data.start),
+            mirror(data.end),
+            data.piece);
+        drawSquare(GAME.elem.context,
+            mirror(data.end)); // 캡쳐된 기물 지우기 (todo. 페이드 효과 추가)
+        drawPieceX(GAME.elem.context,
+            data.piece,
+            mirror(data.end));
+      }
 
       if (GAME.player.color == 'W') {
         var positionString = GAME.repr.board.toString();
